@@ -22,159 +22,352 @@
       <h1>
 <a id="dio-zero---a-java-device-io-wrapper-for-gpio--i2c--spi-devices" class="anchor" href="#dio-zero---a-java-device-io-wrapper-for-gpio--i2c--spi-devices" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>DIO-Zero - a Java Device I/O wrapper for GPIO / I2C / SPI devices</h1>
 
-<p>A Device I/O library that provides object-orientated APIs for a range of GPIO/I2C/SPI devices such as LEDs, buttons and other various sensors. The library uses Java ServiceLoader to load low-level libraries for actually interfacing with the underlying hardware. I've only tested this library on the Raspberry Pi (B+, Zero and 2) using Oracle's Java SE 1.8 however it should work on any device that the currently bundled libraries support.</p>
+<p>A Device I/O library written in Java that provides an object-orientated interface for a range of GPIO / I2C / SPI devices such as LEDs, buttons and other various sensors connected to intelligent devices like the Raspberry Pi. Actual GPIO / I2C / SPI device communication is implemented via pluggable service providers for maximum compatibility across different device types.</p>
 
-<p>The class <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/api/DeviceFactoryHelper.java">DeviceFactoryHelper</a> encapsulates the logic for accessing the configured service provider. Interfaces for implementing a new service provider are in the <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/internal/spi">com.diozero.internal.spi</a> package. Developing a new service provider is relatively straightforward given the provided APIs and base classes.</p>
+<p>This library makes use of modern Java 8 features such as <a href="https://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html">automatic resource management</a>, <a href="https://docs.oracle.com/javase/tutorial/java/javaOO/lambdaexpressions.html">Lambda Expressions</a> and <a href="https://docs.oracle.com/javase/tutorial/java/javaOO/methodreferences.html">Method References</a> where they simplify development and improve code readability.</p>
 
-<p>In theory the OpenJDK Device I/O service provider should provide the best platform support, however, the JDK Device I/O library <a href="http://mail.openjdk.java.net/pipermail/dio-dev/2015-November/000650.html">doesn't support PWM</a>.</p>
+<p>Created by <a href="https://github.com/mattjlewis">Matt Lewis</a> (email <a href="mailto:deviceiozero@gmail.com">deviceiozero@gmail.com</a>), inspired by <a href="https://gpiozero.readthedocs.org/en/v1.1.0/index.html">GPIO Zero</a>. If you have any issues, comments or suggestions please use <a href="https://www.raspberrypi.org/forums/viewtopic.php?f=81&amp;t=136010">this thread</a> on the Raspberry Pi forums.</p>
 
-<p>As well as providing classes for interfacing with some I2C and SPI devices, the library also provides a simple object-orientated GPIO wrapper layer that replicates the APIs from the excellent <a href="http://pythonhosted.org/gpiozero/">GPIO Zero Python library</a>.</p>
+<h2>
+<a id="concepts" class="anchor" href="#concepts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Concepts</h2>
 
-<p>All pin numbers are device native, i.e. Broadcom pin numbering on the Raspberry Pi.</p>
+<p>The aim of this library is to encapsulate real-world devices as classes with meaningful operation names, for example LED (on / off), LDR (get luminosity), Button (pressed / released), Motor (forward / backwards / left / right). All devices implement <code>Closeable</code> hence will get automatically closed by the <code>try (Device d = new Device()) { d.doSomething() }</code> statement. This is best illustrated by some simple examples.</p>
 
-<p>Snapshot builds of the library are available in the <a href="https://oss.sonatype.org/index.html#nexus-search;gav%7Ecom.diozero%7E%7E%7E%7E">Nexus Repository Manager</a>.
-Dependencies:</p>
+<p>!!! note
+    All pin numbers are device native, i.e. Broadcom for the Raspberry Pi.</p>
 
-<ul>
-<li>log4j (<a href="https://drive.google.com/open?id=0B2Kd_bs3CEYaN29vVGlhak9WQVE">API</a> and <a href="https://drive.google.com/open?id=0B2Kd_bs3CEYaeURfWk5uSlZfbGc">Core</a>)</li>
-<li><a href="https://oss.sonatype.org/service/local/repositories/snapshots/content/com/pi4j/pi4j-core/1.1-SNAPSHOT/pi4j-core-1.1-20151214.215847-34.jar">Pi4j</a></li>
-</ul>
+<p>LED control:</p>
 
-<p>To run the <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/sampleapps/LEDTest.java">LED sample application</a> using Pi4j:</p>
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">LED</span> led <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LED</span>(pin)) {
+    led<span class="pl-k">.</span>on();
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">.5</span>);
+    led<span class="pl-k">.</span>off();
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">.5</span>);
+    led<span class="pl-k">.</span>toggle();
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">.5</span>);
+    led<span class="pl-k">.</span>toggle();
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">.5</span>);
+    led<span class="pl-k">.</span>blink(<span class="pl-c1">0.5f</span>, <span class="pl-c1">0.5f</span>, <span class="pl-c1">10</span>, <span class="pl-c1">false</span>);
+}</pre></div>
 
-<pre><code>sudo java -classpath diozero-core-0.2-SNAPSHOT.jar:diozero-provider-pi4j-0.2-SNAPSHOT.jar:pi4j-core-1.1-SNAPSHOT.jar:log4j-api-2.5.jar:log4j-core-2.5.jar com.diozero.sampleapps.LEDTest 18
+<p>Turn on an LED when you press a button:</p>
+
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">Button</span> button <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Button</span>(buttonPin, <span class="pl-smi">GpioPullUpDown</span><span class="pl-c1"><span class="pl-k">.</span>PULL_UP</span>); <span class="pl-smi">LED</span> led <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LED</span>(ledPin)) {
+    button<span class="pl-k">.</span>whenPressed(led<span class="pl-k">::</span>on);
+    button<span class="pl-k">.</span>whenReleased(led<span class="pl-k">::</span>off);
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">10</span>);
+}</pre></div>
+
+<p>Or a random LED flicker effect:</p>
+
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">PwmLed</span> led <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">PwmLed</span>(pin)) {
+    <span class="pl-smi">GpioScheduler</span><span class="pl-k">.</span>getInstance()<span class="pl-k">.</span>invokeAtFixedRate(<span class="pl-c1">RANDOM</span><span class="pl-k">::</span>nextFloat, led<span class="pl-k">::</span>setValue, <span class="pl-c1">50</span>, <span class="pl-c1">50</span>, <span class="pl-smi">TimeUnit</span><span class="pl-c1"><span class="pl-k">.</span>MILLISECONDS</span>, <span class="pl-c1">false</span>);
+}</pre></div>
+
+<p>All devices are provisioned by a <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/internal/spi/DeviceFactoryInterface.java">Device Factory</a> with a default <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/internal/DeviceFactoryHelper.java">NativeDeviceFactory</a> for provisioning via the host board itself. However, all components accept an optional Device Factory parameter for provisioning the same set of components via an alternative method. This is particularly useful for GPIO expansion boards and Analog-to-Digital converters.</p>
+
+<p>The Raspberry Pi provides no analog input pins; attempting to create an AnalogInputDevice such as an LDR using the Raspberry Pi default native device factory would result in a runtime error (<code>UnsupportedOperationException</code>). However, ADC classes such as the <a href="http://rtd.diozero.com/en/latest/ExpansionBoards/#mcp-adc">McpAdc</a> have been implemented as analog input device factories hence can be used to construct analog devices such as LDRs:</p>
+
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">McpAdc</span> adc <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">McpAdc</span>(<span class="pl-smi">McpAdc</span><span class="pl-k">.</span><span class="pl-smi">Type</span><span class="pl-c1"><span class="pl-k">.</span>MCP3008</span>, chipSelect); <span class="pl-smi">LDR</span> ldr <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LDR</span>(adc, pin, vRef, r1)) {
+    <span class="pl-smi">System</span><span class="pl-k">.</span>out<span class="pl-k">.</span>println(ldr<span class="pl-k">.</span>getUnscaledValue());
+}</pre></div>
+
+<p>Repeating the previous example of controlling an LED when you press a button but with all devices connected via an <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/MCP23017.java">MCP23017</a> GPIO expansion board:</p>
+
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">MCP23017</span> mcp23017 <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">MCP23017</span>(intAPin, intBPin);
+        <span class="pl-smi">Button</span> button <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">Button</span>(mcp23017, inputPin, <span class="pl-smi">GpioPullUpDown</span><span class="pl-c1"><span class="pl-k">.</span>PULL_UP</span>);
+        <span class="pl-smi">LED</span> led <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LED</span>(mcp23017, outputPin)) {
+    button<span class="pl-k">.</span>whenPressed(led<span class="pl-k">::</span>on);
+    button<span class="pl-k">.</span>whenReleased(led<span class="pl-k">::</span>off);
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">10</span>);
+}</pre></div>
+
+<p>Analog input devices also provide an event notification mechanism. To control the brightness of an LED based on ambient light levels:</p>
+
+<div class="highlight highlight-source-java"><pre><span class="pl-k">try</span> (<span class="pl-smi">McpAdc</span> adc <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">McpAdc</span>(<span class="pl-smi">McpAdc</span><span class="pl-k">.</span><span class="pl-smi">Type</span><span class="pl-c1"><span class="pl-k">.</span>MCP3008</span>, chipSelect); <span class="pl-smi">LDR</span> ldr <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">LDR</span>(adc, pin, vRef, r1); <span class="pl-smi">PwmLed</span> led <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-smi">PwmLed</span>(ledPin)) {
+    <span class="pl-c">// Detect variations of 10%, get values every 50ms (the default)</span>
+    ldr<span class="pl-k">.</span>addListener((event) <span class="pl-k">-</span><span class="pl-k">&gt;</span> led<span class="pl-k">.</span>setValue(<span class="pl-c1">1</span><span class="pl-k">-</span>event<span class="pl-k">.</span>getUnscaledValue()), <span class="pl-c1">.1f</span>);
+    <span class="pl-smi">SleepUtil</span><span class="pl-k">.</span>sleepSeconds(<span class="pl-c1">20</span>);
+}</pre></div>
+
+<h2>
+<a id="getting-started" class="anchor" href="#getting-started" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Getting Started</h2>
+
+<p>Snapshot builds of the library are available in the <a href="https://oss.sonatype.org/index.html#nexus-search;gav%7Ecom.diozero%7E%7E%7E%7E">Nexus Repository Manager</a>. For convenience a ZIP of all diozero JARs will be maintained on <a href="https://drive.google.com/folderview?id=0B2Kd_bs3CEYaZ3NiRkd4OXhYd3c">Google Drive</a>.</p>
+
+<p>Unfortunately Java doesn't provide a convenient deployment-time dependency manager such Python's <code>pip</code> therefore you will need to manually download all dependencies and setup your classpath correctly. You can do this either via setting the <code>CLASSPATH</code> environment variable or as a command-line option (<code>java -cp &lt;jar1&gt;:&lt;jar2&gt;</code>). The dependencies have been deliberately kept to as few libraries as possible, as such this library is only dependent on <a href="http://www.tinylog.org">tinylog</a> <a href="https://github.com/pmwmedia/tinylog/releases/download/1.0.3/tinylog-1.0.3.zip">v1.0</a>.</p>
+
+<p>To compile and run a diozero application you will need 4 JAR files - tinylog, diozero-core, one of the supported device provider libraries and the corresponding diozero provider wrapper library.</p>
+
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Provider Jar</th>
+<th>diozero wrapper-library</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JDK Device I/O 1.0</td>
+<td>dio-1.0.1.jar</td>
+<td>diozero-provider-jdkdeviceio10-&lt;version&gt;.jar</td>
+</tr>
+<tr>
+<td>JDK Device I/O 1.1</td>
+<td>dio-1.1.jar</td>
+<td>diozero-provider-jdkdeviceio11-&lt;version&gt;.jar</td>
+</tr>
+<tr>
+<td>Pi4j</td>
+<td>pi4j-core-1.1-SNAPSHOT.jar</td>
+<td>diozero-provider-pi4j-&lt;version&gt;.jar</td>
+</tr>
+<tr>
+<td>wiringPi</td>
+<td>pi4j-core-1.1-SNAPSHOT.jar</td>
+<td>diozero-provider-wiringpi-&lt;version&gt;.jar</td>
+</tr>
+<tr>
+<td>pigpio</td>
+<td>pigpioj-java-1.0.0.jar</td>
+<td>diozero-provider-pigio-&lt;version&gt;.jar</td>
+</tr>
+</tbody>
+</table>
+
+<p>To get started I recommend first looking at the classes in <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/sampleapps/">com.diozero.sampleapps</a>. To run the <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/sampleapps/LEDTest.java">LEDTest</a> sample application using the pigpioj provider:</p>
+
+<p>Option 1 - Setting the CLASSPATH environment variable:</p>
+
+<div class="highlight highlight-source-shell"><pre>CLASSPATH=tinylog-1.0.3.jar:diozero-core-0.3-SNAPSHOT.jar:diozero-provider-pigpio-0.3-SNAPSHOT.jar:pigpioj-java-1.0.0.jar<span class="pl-k">;</span> <span class="pl-k">export</span> CLASSPATH
+sudo java -cp <span class="pl-smi">$CLASSPATH</span> com.diozero.sampleapps.LEDTest 12</pre></div>
+
+<p>Option 2 - Setting the classpath via command-line:</p>
+
+<div class="highlight highlight-source-shell"><pre>sudo java -cp tinylog-1.0.3.jar:diozero-core-0.3-SNAPSHOT.jar:diozero-provider-pigpio-0.3-SNAPSHOT.jar:pigpioj-java-1.0.0.jar com.diozero.sampleapps.LEDTest 12</pre></div>
+
+<p>For an experience similar to Python where source code is interpreted rather than compiled try <a href="http://www.groovy-lang.org/">Groovy</a> (<code>sudo apt-get update &amp;&amp; sudo apt-get install groovy2</code>). With the <code>CLASSPATH</code> environment variable set as per the instructions above, a simple test application can be run via the command <code>groovy &lt;filename&gt;</code>. There is also a Groovy shell environment <code>groovysh</code>.</p>
+
+<p>A Groovy equivalent of the LED controlled button example:</p>
+
+<div class="highlight highlight-source-groovy"><pre><span class="pl-k">import</span> <span class="pl-smi">com.diozero.Button</span>
+<span class="pl-k">import</span> <span class="pl-smi">com.diozero.LED</span>
+<span class="pl-k">import</span> <span class="pl-smi">com.diozero.util.SleepUtil</span>
+
+led <span class="pl-k">=</span> <span class="pl-k">new</span> LED(<span class="pl-c1">12</span>)
+button <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-k">Button</span>(<span class="pl-c1">25</span>)
+
+button<span class="pl-k">.</span>whenPressed({ led<span class="pl-k">.</span>on() })
+button<span class="pl-k">.</span>whenReleased({ led<span class="pl-k">.</span>off() })
+
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Waiting for button presses. Press CTRL-C to quit.<span class="pl-pds">"</span></span>)
+<span class="pl-k">SleepUtil</span><span class="pl-k">.</span>pause()</pre></div>
+
+<p>To run:</p>
+
+<div class="highlight highlight-source-shell"><pre>sudo groovy -cp <span class="pl-smi">$CLASSPATH</span> <span class="pl-c1">test</span>.groovy</pre></div>
+
+<p>!!! note "Groovy JAVA_HOME config when running via sudo"
+    I was getting the error:</p>
+
+<pre><code>`groovy: JAVA_HOME is not defined correctly, can not execute: /usr/lib/jvm/default-java/bin/java`
+
+I tried setting JAVA_HOME in /etc/environment and /etc/profile.d/jdk.sh to no affect. Eventually the following fixed it for me. Please let me know if there is a better way to fix this issue.
+
+```
+ln -s /usr/lib/jvm/jdk-8-oracle-arm32-vfp-hflt /usr/lib/jvm/default-java
+```
 </code></pre>
 
-<p>The device native service provider library is defined in the following order:
-1.  System property com.diozero.devicefactory, e.g. <code>-Dcom.diozero.devicefactory=com.diozero.internal.provider.pi4j.Pi4jDeviceFactory</code>
-2.  Service definition file on the classpath, file /META-INF/services/com.diozero.internal.spi.NativeDeviceFactoryInterface. For example <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-provider-pi4j/src/main/resources/META-INF/services/com.diozero.internal.spi.NativeDeviceFactoryInterface">the one for pi4j</a></p>
+<h2>
+<a id="devices" class="anchor" href="#devices" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Devices</h2>
 
-<p><strong>Currently implemented service providers:</strong></p>
+<p>This library provides support for a number of GPIO / I2C / SPI connected components and devices, I have categorised them as follows:</p>
 
 <ul>
 <li>
-<a href="https://wiki.openjdk.java.net/display/dio/Main">JDK Device I/O</a> - versions 1.0 and 1.1</li>
-<li><a href="http://pi4j.com/">Pi4j</a></li>
+<a href="http://rtd.diozero.com/en/latest/API/">API</a> for lower-level interactions
+
+<ul>
 <li>
-<a href="http://wiringpi.com/">wiringPi</a> via the Pi4j JNI wrapper classes</li>
-<li>
-<a href="http://abyz.co.uk/rpi/pigpio/index.html">pigpio</a> via my <a href="https://github.com/mattjlewis/pigpioj">JNI wrapper library</a>
+<a href="http://rtd.diozero.com/en/latest/API/#input-devices">Input</a>, <a href="http://rtd.diozero.com/en/latest/API/#output-devices">Output</a>, <a href="http://rtd.diozero.com/en/latest/API/#i2c-support">I2C</a>, <a href="http://rtd.diozero.com/en/latest/API/#spi-support">SPI</a>
 </li>
 </ul>
-
-<p><strong>Currently supported I2C devices:</strong></p>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/InputDevices/">Input Devices</a>
 
 <ul>
 <li>
-<a href="http://www.invensense.com/products/motion-tracking/9-axis/mpu-9150/">InvenSense MPU-9150</a> Nine-axis motion tracking device. Currently a fully working Java port of the InvenSense C library but could do with some Object Orientation related improvements. </li>
-<li>
-<a href="https://www.adafruit.com/datasheets/TSL2561.pdf">TSL2561</a> light-to-digital converter</li>
-<li>
-<a href="https://www.bosch-sensortec.com/en/homepage/products_3/environmental_sensors_1/bmp180_1/bmp180">Bosch Sensortec BMP180</a> temperature and pressure sensor</li>
-<li>
-<a href="http://www.microchip.com/wwwproducts/Devices.aspx?product=MCP23017">MCP23017</a> 16-bit input/output port expander with interrupt output</li>
-<li>
-<a href="http://www.nxp.com/products/power-management/lighting-driver-and-controller-ics/i2c-led-display-control/16-channel-12-bit-pwm-fm-plus-ic-bus-led-controller:PCA9685">PCA9685</a> 12-bit 16-channel PWM driver as used by the <a href="https://www.adafruit.com/product/815">Adafruit PWM Servo Driver</a>
+<a href="http://rtd.diozero.com/en/latest/InputDevices/#digital-input-devices">Digital</a> and <a href="http://rtd.diozero.com/en/latest/InputDevices/#analog-input-devices">Analog</a>
 </li>
 </ul>
-
-<p><strong>Currently supported SPI devices:</strong></p>
-
-<ul>
-<li><a href="https://www.adafruit.com/datasheets/MCP3008.pdf">MCP3008 Analogue to Digital Converter</a></li>
-</ul>
-
-<p><strong>Analogue device support:</strong></p>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/OutputDevices/">Output Devices</a>
 
 <ul>
 <li>
-<a href="http://www.analog.com/en/products/analog-to-digital-converters/integrated-special-purpose-converters/integrated-temperature-sensors/tmp36.html">TMP36</a> temperature sensor</li>
-<li><a href="https://en.wikipedia.org/wiki/Photoresistor">Photo Resistor/LDR</a></li>
+<a href="http://rtd.diozero.com/en/latest/OutputDevices/#digital-led">Digital</a> and <a href="http://rtd.diozero.com/en/latest/OutputDevices/#pwm-led">PWM</a>
+</li>
+</ul>
+</li>
 <li>
-<a href="http://www.sharpsma.com/webfm_send/1208">Sharp GP2Y0A21YK</a> distance sensor</li>
-</ul>
-
-<p><strong>Basic GPIO Output devices:</strong></p>
-
-<ul>
-<li>Button</li>
-<li>Buzzer</li>
-<li>Generic bi-directional motors (Digital and PWM)</li>
-<li>LED (Digital and PWM) </li>
-</ul>
-
-<p><strong>Basic GPIO Input devices:</strong></p>
-
-<ul>
-<li>Line sensor</li>
-<li>Motion sensor</li>
-</ul>
-
-<p><strong>More complex GPIO devices:</strong></p>
+<a href="http://rtd.diozero.com/en/latest/ExpansionBoards/">Expansion Boards</a> for adding additional GPIO / Analog / PWM pins
 
 <ul>
 <li>
-<a href="http://www.micropik.com/PDF/HCSR04.pdf">HC-SR04</a> Ultrasonic Ranging Module</li>
-<li>PWM-controlled motor drivers, e.g. <a href="http://camjam.me/?page_id=1035">CamJam EduKit #3 - Robotics</a> and the <a href="http://toshiba.semicon-storage.com/info/lookup.jsp?pid=TB6612FNG&amp;lang=en">Toshiba TB6612FNG Dual Motor Driver</a> as used in the <a href="https://www.pololu.com/product/713">Pololu Dual Motor Driver Carrier</a>
+<a href="http://rtd.diozero.com/en/latest/ExpansionBoards/#mcp-adc">Microchip Analog to Digital Converters</a>, <a href="http://rtd.diozero.com/en/latest/ExpansionBoards/#mcp-gpio-expansion-board">Microchip GPIO Expansion Board</a>, <a href="http://rtd.diozero.com/en/latest/ExpansionBoards/#pwm-servo-driver">PWM / Servo Driver</a>
+</li>
+</ul>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/MotorControl/">Motor Control</a> (support for common motor controller boards)
+
+<ul>
+<li>
+<a href="http://rtd.diozero.com/en/latest/MotorControl/#api">API</a>, <a href="http://rtd.diozero.com/en/latest/MotorControl/#servo">Servos</a>, <a href="http://rtd.diozero.com/en/latest/MotorControl/#camjamkitdualmotor">CamJam EduKit</a>, <a href="http://rtd.diozero.com/en/latest/MotorControl/#ryanteckdualmotor">Ryanteck</a>, <a href="http://rtd.diozero.com/en/latest/MotorControl/#tb6612fngdualmotordriver">Toshiba TB6612FNG</a>
+</li>
+</ul>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/SensorComponents/">Sensor Components</a> (support for specific sensors, e.g. temperature, pressure, distance, luminosity)
+
+<ul>
+<li>
+<a href="http://rtd.diozero.com/en/latest/SensorComponents/#hc-sr04">HC-SR04 Ultrasonic Ranging Module</a>, <a href="http://rtd.diozero.com/en/latest/SensorComponents/#bosch-bmp180">Bosch BMP180</a>, <a href="http://rtd.diozero.com/en/latest/SensorComponents/#tsl2561">TSL2561 Light Sensor</a>, <a href="http://rtd.diozero.com/en/latest/SensorComponents/#1-wire-temperature-sensors">1-Wire Temperature Sensors e.g. DS18B20</a>
+</li>
+</ul>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/IMUDevices/">IMU Devices</a> Work-in-progress API for interacting with Inertial Measurement Units such as the InvenSense MPU-9150 and the Analog Devices ADXL345
+
+<ul>
+<li>
+<a href="http://rtd.diozero.com/en/latest/IMUDevices/#api">API</a>, <a href="http://rtd.diozero.com/en/latest/IMUDevices/#supported-devices">Supported Devices</a>
+</li>
+</ul>
+</li>
+<li>
+<a href="http://rtd.diozero.com/en/latest/LEDStrips/">LED Strips</a> Support for LED strips (WS2811B / WS2812B / Adafruit NeoPixel)
+
+<ul>
+<li><a href="http://rtd.diozero.com/en/latest/LEDStrips/#ws281x">WS2811B / WS2812B</a></li>
+</ul>
 </li>
 </ul>
 
 <h2>
 <a id="performance" class="anchor" href="#performance" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Performance</h2>
 
-<p>I've done some limited performance tests (turning a GPIO on then off, see <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/sampleapps/GpioPerfTest.java">GpioPerfTest</a>) on a Raspberry Pi 2 using the various native device factory providers as well as a test using Pi4j's wiringPi JNI API directly without going via my DIO-Zero wrapper (see <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-provider-wiringpi/src/main/java/com/diozero/internal/provider/wiringpi/WiringPiRawPerfTest.java">WiringPiRawPerfTest</a>); here are the results:</p>
+<p>I've done some limited performance tests (turning a GPIO on then off, see <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-core/src/main/java/com/diozero/sampleapps/GpioPerfTest.java">GpioPerfTest</a>) on a Raspberry Pi 2 and 3 using the various native device factory providers. I've also run tests using JNI APIs directly without going via my DIO-Zero wrapper to assess the overhead of using my library (see <a href="https://github.com/mattjlewis/diozero/blob/master/diozero-provider-wiringpi/src/main/java/com/diozero/internal/provider/wiringpi/WiringPiRawPerfTest.java">WiringPiRawPerfTest</a> and <a href="https://github.com/mattjlewis/pigpioj/blob/master/pigpioj-java/src/main/java/com/diozero/pigpioj/test/PigpioPerfTest.java">PigpioPerfTest</a>) - the overhead is approximately 25% for pigpio and wiringPi. Here are the results:</p>
 
-<pre><code>Provider           Iterations  Frequency (kHz)
-Pi4j 1.0           10,000      0.91
-JDK DIO 1.1        100,000     8.23
-Pi4j 1.1           10,000,000  622
-wiringPi           5,000,000   1,683
-wiringPi (direct)  10,000,000  2,137
-pigpio             5,000,000   1,266
-pigpio (direct)    10,000,000  1,649
-</code></pre>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th align="center">Device</th>
+<th align="right">Frequency (kHz)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pi4j 1.0</td>
+<td align="center">Pi2</td>
+<td align="right">0.91</td>
+</tr>
+<tr>
+<td>JDK DIO 1.1</td>
+<td align="center">Pi2</td>
+<td align="right">8.23</td>
+</tr>
+<tr>
+<td>Pi4j 1.1</td>
+<td align="center">Pi2</td>
+<td align="right">622</td>
+</tr>
+<tr>
+<td>pigpio</td>
+<td align="center">Pi2</td>
+<td align="right">2,019</td>
+</tr>
+<tr>
+<td>pigpio</td>
+<td align="center">Pi3</td>
+<td align="right">2,900</td>
+</tr>
+<tr>
+<td>pigpio (JNI)</td>
+<td align="center">Pi2</td>
+<td align="right">2,509</td>
+</tr>
+<tr>
+<td>pigpio (JNI)</td>
+<td align="center">Pi3</td>
+<td align="right">3,537</td>
+</tr>
+<tr>
+<td>wiringPi</td>
+<td align="center">Pi2</td>
+<td align="right">2,640</td>
+</tr>
+<tr>
+<td>wiringPi</td>
+<td align="center">Pi3</td>
+<td align="right">3,446</td>
+</tr>
+<tr>
+<td>wiringPi (JNI)</td>
+<td align="center">Pi2</td>
+<td align="right">3,298</td>
+</tr>
+<tr>
+<td>wiringPi (JNI)</td>
+<td align="center">Pi3</td>
+<td align="right">4,373</td>
+</tr>
+</tbody>
+</table>
 
-<p>For a discussion on why Pi4j 1.0 is so slow, see this <a href="https://github.com/Pi4J/pi4j/issues/158">issue</a>. These results are in-line with those documented in the book <a href="http://www.amazon.co.uk/Raspberry-Pi-Java-Programming-Internet/dp/0071842012">"Raspberry Pi with Java: Programming the Internet of Things"</a>. For reference, the author's results were:</p>
+<p><img src="images/Performance.png" alt="Performance" title="Performance"> </p>
 
-<pre><code>Library            Frequency (kHz)
-Pi4j 1.0           0.751
-JDK DIO 1.0        3.048
-wiringPi (direct)  1,662
-</code></pre>
+<p>For a discussion on why Pi4j 1.0 was so slow, see this <a href="https://github.com/Pi4J/pi4j/issues/158">issue</a>. These results are in-line with those documented in the book <a href="http://www.amazon.co.uk/Raspberry-Pi-Java-Programming-Internet/dp/0071842012">"Raspberry Pi with Java: Programming the Internet of Things"</a>. For reference, the author's results were:</p>
+
+<table>
+<thead>
+<tr>
+<th align="left">Library</th>
+<th align="right">Frequency (kHz)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">Pi4j 1.0</td>
+<td align="right">0.751</td>
+</tr>
+<tr>
+<td align="left">JDK DIO 1.0</td>
+<td align="right">3.048</td>
+</tr>
+<tr>
+<td align="left">wiringPi (direct)</td>
+<td align="right">1,662</td>
+</tr>
+</tbody>
+</table>
 
 <h2>
-<a id="notes" class="anchor" href="#notes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Notes</h2>
+<a id="development" class="anchor" href="#development" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Development</h2>
 
-<p>This library has device providers for <a href="https://wiki.openjdk.java.net/display/dio/Main">JDK Device I/O</a> v1.0 <a href="http://hg.openjdk.java.net/dio/master">Mercurial master repository</a> and v1.1 <a href="http://hg.openjdk.java.net/dio/dev">Mercurial dev repository</a>. Unfortunately these libraries aren't in Maven repositories; to build the JDK Device I/O v1.0 library on the Raspberry Pi:</p>
+<p>This project is hosted on <a href="https://github.com/mattjlewis/diozero/">GitHub</a>, please feel free to join in:</p>
 
-<pre><code>sudo apt-get install mercurial
-mkdir deviceio
-cd deviceio
-hg clone http://hg.openjdk.java.net/dio/master
-cd master
-export JAVA_HOME=/usr/lib/jvm/jdk-8-oracle-arm-vfp-hflt
-export PATH=$JAVA_HOME/bin:$PATH
-export PI_TOOLS=/usr
-make bundle PI_TOOLS=$PI_TOOLS osgi
-cp build/deviceio/lib/ext/dio.jar dio-1.0.jar
-sudo cp build/deviceio/lib/ext/dio.jar $JAVA_HOME/jre/lib/ext/.
-sudo cp build/deviceio/lib/arm/libdio.so $JAVA_HOME/jre/lib/arm/.
-</code></pre>
-
-<p>To add Java Device I/O JAR to your local Maven repository (on your development machine) run:</p>
-
-<pre><code>mvn install:install-file -Dfile=dio-1.0.jar -DgroupId=jdk.dio -DartifactId=device-io -Dversion=1.0 -Dpackaging=jar -DgeneratePom=true
-</code></pre>
-
-<p>Similar instructions should be followed for installing v1.1, the only difference being how it is built:</p>
-
-<pre><code>hg clone http://hg.openjdk.java.net/dio/dev
-cd dev
-export JAVA_HOME=/usr/lib/jvm/jdk-8-oracle-arm-vfp-hflt
-export PATH=$JAVA_HOME/bin:$PATH
-export PI_TOOLS=/usr
-make
-</code></pre>
+<ul>
+<li>Make suggestions for <a href="https://github.com/mattjlewis/diozero/issues">fixes and enhancements</a>
+</li>
+<li>Provide sample applications</li>
+<li>Contribute to development</li>
+</ul>
 
 <h2>
 <a id="to-do" class="anchor" href="#to-do" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>To-Do</h2>
@@ -185,11 +378,25 @@ make
 <li>Thorough testing (various types of devices using each service provider)</li>
 <li>Testing on different devices (all flavours of Raspberry Pi, BeagleBone, ...)</li>
 <li>GPIO input debouncing</li>
-<li>Smoothed input listener</li>
 <li>Other I2C &amp; SPI devices, including those on the SenseHAT</li>
 <li>A clean object-orientated API for IMUs</li>
-<li>Review logging framework usage and output (is log4j an unnecessary dependency for this library?)</li>
 </ul>
+
+<h2>
+<a id="change-log" class="anchor" href="#change-log" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Change-log</h2>
+
+<ul>
+<li>Release 0.2: First tagged release</li>
+<li>Release 0.3: API change - analogue to analog</li>
+<li>Release 0.4: Bug fixes, servo support</li>
+<li>Release 0.5: Testing improvements</li>
+<li>Release 0.6: Preparing for 1.0 release</li>
+</ul>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
+
+<p>This work is provided under the <a href="http://rtd.diozero.com/en/latest/license/">MIT License</a>.</p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/mattjlewis/diozero">Diozero</a> is maintained by <a href="https://github.com/mattjlewis">mattjlewis</a>.</span>
@@ -199,6 +406,16 @@ make
 
     </section>
 
-  
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-73764647-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
   </body>
 </html>
